@@ -349,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const passwordInput = document.getElementById('team-password');
         const password = passwordInput ? passwordInput.value : '';
 
-        console.log("Login Attempt:", { selectedMemberId, passwordLength: password.length });
+        console.log("Login Attempt (JS Check):", { selectedMemberId, passwordLength: password.length });
 
         if (!selectedMemberId) {
             showToast("Please select your name to continue.", "error");
@@ -361,26 +361,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        try {
-            const response = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'ngrok-skip-browser-warning': 'true'
-                },
-                body: JSON.stringify({
-                    memberId: String(selectedMemberId),
-                    password: password
-                })
-            });
-            
-            const result = await response.json();
-            console.log("Login Result:", result);
-            
-            if (result.success) {
+        // --- NEW JS PASSWORD CHECK ---
+        const member = teamMembers.find(m => String(m.id) === String(selectedMemberId));
+        
+        if (member) {
+            if (member.password === password) {
+                // Login Success
                 loginAttempts = 0;
                 if (passwordResetHint) passwordResetHint.style.display = 'none';
-                const memberName = result.name;
+                const memberName = member.name;
                 const loadingOverlay = document.getElementById('loading-overlay');
                 const loadingText = loadingOverlay ? loadingOverlay.querySelector('.loading-text') : null;
                 
@@ -447,18 +436,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 3500);
                 }, 500);
             } else {
-                if (result.message === 'Invalid credentials') {
-                    loginAttempts += 1;
-                    if (loginAttempts > 2 && passwordResetHint) {
-                        passwordResetHint.style.display = 'block';
-                    }
+                // Wrong Password
+                loginAttempts += 1;
+                if (loginAttempts > 2 && passwordResetHint) {
+                    passwordResetHint.style.display = 'block';
                 }
-                const msg = (result.message === 'Invalid credentials') ? "Wrong Password" : (result.message || "Login failed.");
-                showToast(msg, "error");
+                showToast("Wrong Password", "error");
             }
-        } catch (error) {
-            console.error("Login error:", error);
-            showToast("Login error. Please try again.", "error");
+        } else {
+            showToast("Member not found or not approved.", "error");
         }
     };
 
